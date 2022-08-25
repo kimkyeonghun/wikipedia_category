@@ -78,7 +78,11 @@ def _cat_parent_tree_rec(cur, cat, depth, tree, level):
         return
     elif depth and level >= depth:
         for ctg in parent_cats:
-            tree[cat]['parent-categories'][ctg] = None
+            temp_parent_cats = __cat_parent_tree(cur, ctg)
+            if "Hidden_categories" in temp_parent_cats:
+                continue
+            else:
+                tree[cat]['parent-categories'][ctg] = None
     else:
         for ctg in parent_cats:
             if ctg=='Main_topic_classifications':

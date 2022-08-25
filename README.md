@@ -16,7 +16,8 @@ You can get each table's information in https://www.mediawiki.org/wiki/Manual:Ca
 
 You must download mysql and perform initial setup. Since both files have lots of insert query, It takes a lot of time.
 
-You can reduce time using folling link
+You can reduce time using folling link.
+
 https://stackoverflow.com/questions/30387731/loading-enwiki-latest-categorylinks-sql-into-mysql
 
 `mysql -u <db_id> -p wikipedia(or your database)`
