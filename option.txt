@@ -1,0 +1,25 @@
+const options = {"nodes": {"borderWidth": 3,"borderWidthSelected": 4,"opacity": null,
+        "color": {
+            "border": "rgba(165,0,26,0.5)",
+            "background": "rgba(165,0,26,1)",
+            "highlight": {
+                "border": "rgba(165,0,26,1)"
+            }
+      },
+      "font": {
+          "size": 20,
+          "strokeWidth": 2
+      },
+      "shapeProperties": {
+          "borderRadius": 4
+      }
+    },
+    "edges": {
+        "arrows": {
+            "to": {
+                "enabled": true,
+                "scaleFactor": 0.3
+            }
+        }
+    }
+}
