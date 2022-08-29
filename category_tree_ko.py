@@ -8,7 +8,7 @@ import pandas as pd
 
 parser = argparse.ArgumentParser()
 #DB args
-parser.add_argument("--db_id", type=str)
+parser.add_argument("--db_id", type=str, default='root')
 parser.add_argument('--db_password', type=str)
 parser.add_argument('--db_name', type=str, default='wikipedia')
 
@@ -23,14 +23,16 @@ def decode_dataframe(byte):
     return byte.decode()
 
 def __cat_parent_tree(cur, cat):
-    if '\'' in cat:
-        cat = cat.replace('\'','\'\'')
-    sql = "select page_id, page_title from wikipedia.page where page_title='{}' and page_namespace=14".format(
+    sql = "select page_id, page_title from wikipedia_ko.page where page_title='{}' and page_namespace=14".format(
         cat)
     cur.execute(sql)
-    page_id = cur.fetchall()[0]['page_id']
+    page_id = cur.fetchall()
+    if len(page_id)==0:
+        return []
+    else:
+        page_id = page_id[0]['page_id']
 
-    sql = "select cl_from, cl_to from wikipedia.categorylinks where cl_from={}".format(
+    sql = "select cl_from, cl_to from wikipedia_ko.categorylinks where cl_from={}".format(
         page_id)
     cur.execute(sql)
     rows = cur.fetchall()
@@ -41,9 +43,7 @@ def __cat_parent_tree(cur, cat):
 
 
 def __cat_sub_tree(cur, cat):
-    if '\'' in cat:
-        cat = cat.replace('\'','\'\'')
-    sql = "select cl_from from wikipedia.categorylinks where cl_to='{}' and cl_type='subcat';".format(
+    sql = "select cl_from from wikipedia_ko.categorylinks where cl_to='{}' and cl_type='subcat';".format(
         cat)
     cur.execute(sql)
     rows = cur.fetchall()
@@ -53,7 +53,7 @@ def __cat_sub_tree(cur, cat):
     df = pd.DataFrame(rows)
     sub_page_ids = ", ".join(map(str, df['cl_from'].tolist()))
 
-    sql = "select page_title, page_namespace from wikipedia.page where page_id in ({})".format(
+    sql = "select page_title, page_namespace from wikipedia_ko.page where page_id in ({})".format(
         sub_page_ids)
     cur.execute(sql)
     rows = cur.fetchall()
@@ -64,6 +64,7 @@ def __cat_sub_tree(cur, cat):
 
 def _cat_parent_tree_rec(cur, cat, depth, tree, level):
     global categories
+
     if tree.get(cat) is None:
         tree[cat] = dict()
     tree[cat]['depth'] = level
@@ -76,19 +77,19 @@ def _cat_parent_tree_rec(cur, cat, depth, tree, level):
     else:
         return
 
-    if "Hidden_categories" in parent_cats:
+    if "숨은_분류" in parent_cats:
         del tree[cat]
         return
     elif depth and level >= depth:
         for ctg in parent_cats:
             temp_parent_cats = __cat_parent_tree(cur, ctg)
-            if "Hidden_categories" in temp_parent_cats:
+            if "숨은_분류" in temp_parent_cats:
                 continue
             else:
                 tree[cat]['parent-categories'][ctg] = None
     else:
         for ctg in parent_cats:
-            if ctg=='Main_topic_classifications':
+            if ctg in ['주제_분류', '주제별_분류_체계', '주제별_분류']:
                 tree[cat]['parent-categories'][ctg] = None
                 return
             else:
@@ -110,16 +111,12 @@ def _cat_sub_tree_rec(cur, cat, depth, tree, level):
     else:
         return
     
-    if "Hidden_categories" in sub_cats:
+    if "숨은_분류" in sub_cats:
         del tree[cat]
         return
     elif depth and level >= depth:
         for ctg in sub_cats:
-            temp_sub_cats = __cat_sub_tree(cur, ctg)
-            if "Hidden_categories" in temp_sub_cats:
-                continue
-            else:
-                tree[cat]['sub-categories'][ctg] = None
+            tree[cat]['sub-categories'][ctg] = None
     else:
         for ctg in sub_cats:
             categories.append(cat)
@@ -128,7 +125,7 @@ def _cat_sub_tree_rec(cur, cat, depth, tree, level):
 
 if __name__ == '__main__':
     con = pymysql.connect(host='localhost', user=args.db_id, password=args.db_password,
-    db='wikipedia', charset='utf8', cursorclass=pymysql.cursors.DictCursor)
+    db='wikipedia_ko', charset='utf8', cursorclass=pymysql.cursors.DictCursor)
     cur = con.cursor()
 
     keyword = input("Enter keyword: ")
@@ -139,25 +136,24 @@ if __name__ == '__main__':
     categories = []
     start_time = time.time()
     if args.mode=='a':
-        _cat_parent_tree_rec(cur, keyword, args.depth, hirerarchy_keyword, 1)
+        _cat_parent_tree_rec(cur, keyword, 3, hirerarchy_keyword, 0)
         categories = []
         mid_time = time.time()
         print("[ALL mode] Upper category time: ", mid_time - start_time)
-        _cat_sub_tree_rec(cur, keyword, args.depth, hirerarchy_keyword, 1)
+        _cat_sub_tree_rec(cur, keyword, 1, hirerarchy_keyword, 0)
         end_time = time.time()
         print("[ALL mode] Lower category time: ", end_time - mid_time)
         print("[ALL mode] Total category time: ", end_time - start_time)
     elif args.mode=='u':
-        _cat_parent_tree_rec(cur, keyword, args.depth, hirerarchy_keyword, 1)
+        _cat_parent_tree_rec(cur, keyword, args.depth, hirerarchy_keyword, 0)
         print("[Upper mode] Upper category time: ", time.time() - start_time)
     elif args.mode=='l':
-        _cat_sub_tree_rec(cur, keyword, args.depth, hirerarchy_keyword, 1)
+        _cat_sub_tree_rec(cur, keyword, args.depth, hirerarchy_keyword, 0)
         print("[Lower mode] Lower category time: ", time.time() - start_time)
     
     if not os.path.exists('./results'):
         os.mkdir('./results')
-    if len(hirerarchy_keyword[keyword]['sub-categories'])==0:
-        raise ValueError("May be a typing error")
+        
     with open(f"./results/{keyword}.json", 'w') as outfile:
         json.dump(hirerarchy_keyword, outfile)
     con.close()

@@ -32,3 +32,9 @@ https://stackoverflow.com/questions/30387731/loading-enwiki-latest-categorylinks
 
 When mode is 'a', you can get upper and lower hierarchy. 'u' is only upper and 'l' is only lower.
 
+## Tree to Graph
+
+`python tree_to_graph.py --filter --threshold <float>`
+
+For ambiguation words, you must choose the appropriate one.
+

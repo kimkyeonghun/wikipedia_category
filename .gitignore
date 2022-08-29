@@ -1,7 +1,9 @@
 results
 results/*
+graph_results
 
 *.ipynb
 *.html
 
 categorytree.py
+categorytree_ko.py
