@@ -20,16 +20,21 @@ args = parser.parse_args()
 
 
 def decode_dataframe(byte):
+    # byte to string
     return byte.decode()
 
 def __cat_parent_tree(cur, cat):
+    # If category has ', it can cause error in SQL query
     if '\'' in cat:
         cat = cat.replace('\'','\'\'')
+    
+    # 'page_namespace=14' means category page
     sql = "select page_id, page_title from wikipedia.page where page_title='{}' and page_namespace=14".format(
         cat)
     cur.execute(sql)
     page_id = cur.fetchall()[0]['page_id']
 
+    # categorylinks.cl_from == page.page_id
     sql = "select cl_from, cl_to from wikipedia.categorylinks where cl_from={}".format(
         page_id)
     cur.execute(sql)
@@ -43,6 +48,7 @@ def __cat_parent_tree(cur, cat):
 def __cat_sub_tree(cur, cat):
     if '\'' in cat:
         cat = cat.replace('\'','\'\'')
+    
     sql = "select cl_from from wikipedia.categorylinks where cl_to='{}' and cl_type='subcat';".format(
         cat)
     cur.execute(sql)
@@ -52,7 +58,8 @@ def __cat_sub_tree(cur, cat):
 
     df = pd.DataFrame(rows)
     sub_page_ids = ", ".join(map(str, df['cl_from'].tolist()))
-
+    
+    #for multi-search
     sql = "select page_title, page_namespace from wikipedia.page where page_id in ({})".format(
         sub_page_ids)
     cur.execute(sql)
@@ -63,6 +70,13 @@ def __cat_sub_tree(cur, cat):
     return sub_cats
 
 def _cat_parent_tree_rec(cur, cat, depth, tree, level):
+    """
+        category: {
+            level: int,
+            parent-categoeis: dict()        
+            }
+    """
+    #categories is same as visied list in DFS
     global categories
     if tree.get(cat) is None:
         tree[cat] = dict()
@@ -76,6 +90,7 @@ def _cat_parent_tree_rec(cur, cat, depth, tree, level):
     else:
         return
 
+    #remove cyclic connection
     if "Hidden_categories" in parent_cats:
         del tree[cat]
         return
@@ -88,6 +103,7 @@ def _cat_parent_tree_rec(cur, cat, depth, tree, level):
                 tree[cat]['parent-categories'][ctg] = None
     else:
         for ctg in parent_cats:
+            #Main_topic_classifications is top node
             if ctg=='Main_topic_classifications':
                 tree[cat]['parent-categories'][ctg] = None
                 return
@@ -97,6 +113,13 @@ def _cat_parent_tree_rec(cur, cat, depth, tree, level):
                 categories.pop()
 
 def _cat_sub_tree_rec(cur, cat, depth, tree, level):
+    """
+        category: {
+            level: int,
+            sub-categoeis: dict()        
+            }
+    """
+    #categories is same as visied list in DFS
     global categories
     if tree.get(cat) is None:
         tree[cat] = dict()
@@ -110,6 +133,7 @@ def _cat_sub_tree_rec(cur, cat, depth, tree, level):
     else:
         return
     
+    #remove cyclic connection
     if "Hidden_categories" in sub_cats:
         del tree[cat]
         return

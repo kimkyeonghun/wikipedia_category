@@ -20,18 +20,22 @@ args = parser.parse_args()
 
 
 def decode_dataframe(byte):
+    # 바이트에서 스트링으로 변환
     return byte.decode()
 
 def __cat_parent_tree(cur, cat):
+    # page_namespace=14는 분류 페이지를 의미함
     sql = "select page_id, page_title from wikipedia_ko.page where page_title='{}' and page_namespace=14".format(
         cat)
     cur.execute(sql)
     page_id = cur.fetchall()
+    # 검색 결과가 없을 경우
     if len(page_id)==0:
         return []
     else:
         page_id = page_id[0]['page_id']
 
+    # categorylinks.cl_from == page.page_id
     sql = "select cl_from, cl_to from wikipedia_ko.categorylinks where cl_from={}".format(
         page_id)
     cur.execute(sql)
@@ -53,6 +57,7 @@ def __cat_sub_tree(cur, cat):
     df = pd.DataFrame(rows)
     sub_page_ids = ", ".join(map(str, df['cl_from'].tolist()))
 
+    #다중탐색을 위해
     sql = "select page_title, page_namespace from wikipedia_ko.page where page_id in ({})".format(
         sub_page_ids)
     cur.execute(sql)
@@ -63,6 +68,12 @@ def __cat_sub_tree(cur, cat):
     return sub_cats
 
 def _cat_parent_tree_rec(cur, cat, depth, tree, level):
+    """
+        category: {
+            level: int,
+            parent-categoeis: dict()        
+            }
+    """
     global categories
 
     if tree.get(cat) is None:
@@ -136,19 +147,19 @@ if __name__ == '__main__':
     categories = []
     start_time = time.time()
     if args.mode=='a':
-        _cat_parent_tree_rec(cur, keyword, 3, hirerarchy_keyword, 0)
+        _cat_parent_tree_rec(cur, keyword, 3, hirerarchy_keyword, 1)
         categories = []
         mid_time = time.time()
         print("[ALL mode] Upper category time: ", mid_time - start_time)
-        _cat_sub_tree_rec(cur, keyword, 1, hirerarchy_keyword, 0)
+        _cat_sub_tree_rec(cur, keyword, 1, hirerarchy_keyword, 1)
         end_time = time.time()
         print("[ALL mode] Lower category time: ", end_time - mid_time)
         print("[ALL mode] Total category time: ", end_time - start_time)
     elif args.mode=='u':
-        _cat_parent_tree_rec(cur, keyword, args.depth, hirerarchy_keyword, 0)
+        _cat_parent_tree_rec(cur, keyword, args.depth, hirerarchy_keyword, 1)
         print("[Upper mode] Upper category time: ", time.time() - start_time)
     elif args.mode=='l':
-        _cat_sub_tree_rec(cur, keyword, args.depth, hirerarchy_keyword, 0)
+        _cat_sub_tree_rec(cur, keyword, args.depth, hirerarchy_keyword, 1)
         print("[Lower mode] Lower category time: ", time.time() - start_time)
     
     if not os.path.exists('./results'):

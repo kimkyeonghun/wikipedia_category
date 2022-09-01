@@ -4,6 +4,7 @@ graph_results
 
 *.ipynb
 *.html
+*.json
 
 categorytree.py
 categorytree_ko.py
