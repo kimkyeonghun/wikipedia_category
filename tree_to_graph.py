@@ -77,7 +77,7 @@ def make_graph_filter(graph, pivot_node, data, weight, summary, keyword_embeddin
 
             if filter_cosine_sim(keyword_embedding, pivot_embedding, node_embedding):
                 if not (node in graph.get_nodes()):
-                    graph.add_node(node, size=weight)
+                    graph.add_node(node, size=weight, color='red')
                 graph.add_edge(pivot_node, node)
                 make_graph_filter(
                     graph, node, pivot_data['parent-categories'], weight//2, node_summary, keyword_embedding)
@@ -153,8 +153,8 @@ def main():
     #net.from_nx(graph)
     # if set graph other setting using show_buttons
     # net.show_buttons(filter_=['nodes'])
-    options = open("option.txt", 'r').read()
-    net.set_options(options)
+    # options = open("option.txt", 'r').read()
+    # net.set_options(options)
     if not os.path.exists('./graph_results'):
         os.mkdir('./graph_results')
     net.show('./graph_results/{}.html'.format(keyword))
